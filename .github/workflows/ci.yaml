@@ -72,6 +72,8 @@ jobs:
 
           $ANDROID_HOME/build-tools/35.0.0/aapt2 link \
             -o out/CertifiedPropsOverlay-unsigned.apk \
+            --min-sdk-version 24 \
+            --target-sdk-version 36 \
             --manifest AndroidManifest.xml \
             -I $ANDROID_HOME/platforms/android-36/android.jar \
             --auto-add-overlay \
