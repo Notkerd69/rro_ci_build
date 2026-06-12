@@ -2,6 +2,12 @@ name: Build CertifiedPropsOverlay
 
 on:
   workflow_dispatch:
+   inputs:
+      push:
+        description: 'Push to repo?'
+        type: boolean
+        required: true
+        default: true
   schedule:
     - cron: '0 * * * *'
 
@@ -36,12 +42,19 @@ jobs:
         env:
           LATEST_VER: ${{ steps.latest.outputs.latest_ver }}
           CURRENT_VER: ${{ steps.latest.outputs.current_ver }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_INPUT: ${{ github.event.inputs.push }}
         run: |
           set -euo pipefail
 
           if [ "$CURRENT_VER" != "$LATEST_VER" ]; then
             echo "Detected upstream CertifiedPropsOverlay changes"
-            echo "should_push=true" >> "$GITHUB_OUTPUT"
+            if [[ $EVENT_NAME == 'workflow_dispatch' && $PUSH_INPUT == 'false' ]]; then
+                echo "Push disabled by user input"
+                echo "should_push=false" >> "$GITHUB_OUTPUT"
+            else
+                echo "should_push=true" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "Current CertifiedPropsOverlay version already match upstream version"
             echo "should_push=false" >> "$GITHUB_OUTPUT"
