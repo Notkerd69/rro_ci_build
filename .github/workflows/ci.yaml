@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
 
           latestver=$(curl -fsSL https://github.com/yaap/vendor_yaap/raw/sixteen/overlay/CertifiedPropsOverlay/AndroidManifest.xml | grep -oP 'versionName="\K[^"]+')
-          currentver=$(curl -fsSL https://github.com/Notkerd69/ota-info/raw/full-signed/rhodep/cert.json | jq -r '.version')
+          currentver=$(curl -fsSL https://github.com/Notkerd69/yaap_releases/raw/full-signed/rhodep/cert.json | jq -r '.version')
 
           echo "latest_ver=${latestver}" >> "$GITHUB_OUTPUT"
           echo "current_ver=${currentver}" >> "$GITHUB_OUTPUT"
@@ -90,13 +90,9 @@ jobs:
         env:
           GMS_CERT_PRIV: ${{ secrets.GMS_CERT_PRIV }}
           GMS_CERT_PUB: ${{ secrets.GMS_CERT_PUB }}
-          VANILLA_CERT_PRIV: ${{ secrets.VANILLA_CERT_PRIV }}
-          VANILLA_CERT_PUB: ${{ secrets.VANILLA_CERT_PUB }}
         run: |
           printf '%s' "$GMS_CERT_PRIV" | base64 -d > releasekey_gms.pk8
           printf '%s\n' "$GMS_CERT_PUB" > releasekey_gms.x509.pem
-          printf '%s' "$VANILLA_CERT_PRIV" | base64 -d > releasekey_vanilla.pk8
-          printf '%s\n' "$VANILLA_CERT_PUB" > releasekey_vanilla.x509.pem
 
       - name: Build overlay APK
         run: |
@@ -131,19 +127,10 @@ jobs:
             --out vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-gms.apk \
             vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-aligned.apk
 
-          $ANDROID_HOME/build-tools/35.0.0/apksigner sign \
-            --key releasekey_vanilla.pk8 \
-            --cert releasekey_vanilla.x509.pem \
-            --out vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-vanilla.apk \
-            vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-aligned.apk
-
       - name: Verify APK
         run: |
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify -v \
             vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-gms.apk
-
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify -v \
-            vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-vanilla.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -151,7 +138,6 @@ jobs:
           name: CertifiedPropsOverlay
           path: |
             vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-gms.apk
-            vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-vanilla.apk
 
       - name: Generate release tag
         id: tag
@@ -165,7 +151,6 @@ jobs:
           name: CertifiedPropsOverlay ${{ steps.tag.outputs.tag }}
           files: |
             vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-gms.apk
-            vendor_yaap/overlay/CertifiedPropsOverlay/out/CertifiedPropsOverlay-vanilla.apk
         env:
           GITHUB_TOKEN: ${{ secrets.CERTS_TOKEN }}
 
@@ -196,16 +181,6 @@ jobs:
           sed -i -E "s/(\"version\": )[0-9.]+/\1$LATEST_VER/" ota-info/rhodep/cert.json
 
           cd ota-info
-
-          git add rhodep
-          git commit -m "rhodep: Update certified fingerprint"
-          git push origin HEAD
-
-          git checkout vanilla-signed
-
-          cp ../artifacts/CertifiedPropsOverlay-vanilla.apk rhodep/cert.apk
-
-          sed -i -E "s/(\"version\": )[0-9.]+/\1$LATEST_VER/" rhodep/cert.json
 
           git add rhodep
           git commit -m "rhodep: Update certified fingerprint"
